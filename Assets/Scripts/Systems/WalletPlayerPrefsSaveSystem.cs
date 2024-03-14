@@ -1,3 +1,4 @@
+#if ENABLE_SYSTEM_BASED_SAVE_SYSTEM
 using Components;
 using Cores;
 using Unity.Collections;
@@ -6,12 +7,15 @@ using UnityEngine;
 
 namespace Systems
 {
-    [DisableAutoCreation]
-    public unsafe partial struct WalletPlayerPrefsSaveSystem : ISystem
+    [DisableAutoCreation, RequireMatchingQueriesForUpdate]
+    public unsafe partial class WalletPlayerPrefsSaveSystem : SystemBase
     {
+        // Rietmon: Made it as field to avoid allocations
         private string[] keys;
         
-        public void OnCreate(ref SystemState state)
+        // Rietmon: We can move this code to separate method like Deserialize, but I will keep it here for simplicity
+        // Also if we split logic we should have field for check if we already deserialized data
+        protected override void OnCreate()
         {
             keys = new string[Currency.Count];
             for (var i = 0; i < Currency.Count; i++)
@@ -20,7 +24,7 @@ namespace Systems
             var query = SystemAPI.QueryBuilder().WithAll<WalletComponentData>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             var length = entities.Length;
-            if (length > 0)
+            if (length is 0 or > 1)
                 return;
             
             var entity = entities[0];
@@ -29,6 +33,9 @@ namespace Systems
             {
 #if ENABLE_PLAYER_PREF_UNSAFE_CONVERTING_VALUE_TO_BYTES
                 var str = PlayerPrefs.GetString(keys[j]);
+                if (string.IsNullOrEmpty(str))
+                    continue;
+                
                 fixed (char* pBuffer = str)
                     walletComponent.ValueRW.wallet[j] = *(long*)pBuffer;
 #else
@@ -38,12 +45,12 @@ namespace Systems
             }
         }
 
-        public void OnUpdate(ref SystemState state)
+        protected override void OnUpdate()
         {
             var query = SystemAPI.QueryBuilder().WithAll<WalletComponentData>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             var length = entities.Length;
-            if (length > 0)
+            if (length is 0 or > 1)
                 return;
             
             var entity = entities[0];
@@ -66,3 +73,4 @@ namespace Systems
         }
     }
 }
+#endif

@@ -15,7 +15,7 @@ namespace Systems
             var entities = query.ToEntityArray(Allocator.Temp);
             var length = entities.Length;
             // Rietmon: In task wasn't mentioned that we need to process multiple entities, so I will process only one
-            if (length > 1)
+            if (length is 0 or > 1)
                 return;
             
             var entity = entities[0];
