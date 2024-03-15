@@ -1,4 +1,3 @@
-#if ENABLE_SYSTEM_BASED_SAVE_SYSTEM
 using Components;
 using Cores;
 using Unity.Collections;
@@ -7,10 +6,10 @@ using UnityEngine;
 
 namespace Systems
 {
-    [DisableAutoCreation, UpdateBefore(typeof(WalletPostSaveSystem))]
+    [DisableAutoCreation, UpdateBefore(typeof(WalletPostSaveSystem)), UpdateAfter(typeof(WalletSystem))]
     public unsafe partial class WalletPlayerPrefsSaveSystem : SystemBase
     {
-        public bool deserializeOnCreate;
+        public static bool deserializeOnCreate;
         // Rietmon: Made it as field to avoid allocations
         private string[] keys;
         
@@ -89,4 +88,3 @@ namespace Systems
         }
     }
 }
-#endif

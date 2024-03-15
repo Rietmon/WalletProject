@@ -1,4 +1,3 @@
-#if ENABLE_SYSTEM_BASED_SAVE_SYSTEM
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -11,12 +10,12 @@ using UnityEngine;
 
 namespace Systems
 {
-    [DisableAutoCreation, UpdateBefore(typeof(WalletPostSaveSystem))]
+    [DisableAutoCreation, UpdateBefore(typeof(WalletPostSaveSystem)), UpdateAfter(typeof(WalletSystem))]
     public partial class WalletTextSaveSystem : SystemBase
     {
         private static readonly string pathToFile = $"{Application.persistentDataPath}/wallet.txt";
         
-        public bool deserializeOnCreate;
+        public static bool deserializeOnCreate;
         
         private FileStream fileStream;
         private byte[] buffer;
@@ -124,6 +123,7 @@ namespace Systems
             isBusy = true;
             var str = Serialize(walletComponent);
             var length = Encoding.UTF8.GetBytes(str, 0, str.Length, buffer, 0);
+            fileStream.Position = 0;
             fileStream.SetLength(length);
             var task = fileStream.WriteAsync(buffer, 0, length);
             await task;
@@ -143,4 +143,3 @@ namespace Systems
         }
     }
 }
-#endif
