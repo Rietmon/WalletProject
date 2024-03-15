@@ -31,10 +31,12 @@ namespace Systems
                 // Rietmon: We are using fixed array, so we need to check if currency is not out of range
                 if (walletModification.currency >= Currency.Count)
                     continue;
-                    
-                walletComponent.ValueRW.wallet[walletModification.currency] += walletModification.amount;
+                
+                if (walletModification.amount != -1)
+                    walletComponent.ValueRW.wallet[walletModification.currency] = walletModification.amount;
+                else
+                    walletComponent.ValueRW.wallet[walletModification.currency] += walletModification.delta;
             }
-            walletModificationBuffer.Clear();
         }
     }
 }

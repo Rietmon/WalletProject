@@ -11,10 +11,13 @@ using UnityEngine;
 
 namespace Systems
 {
-    [DisableAutoCreation]
+    [DisableAutoCreation, UpdateBefore(typeof(WalletPostSaveSystem))]
     public partial class WalletTextSaveSystem : SystemBase
     {
         private static readonly string pathToFile = $"{Application.persistentDataPath}/wallet.txt";
+        
+        public bool deserializeOnCreate;
+        
         private FileStream fileStream;
         private byte[] buffer;
         private bool isBusy;
@@ -26,13 +29,17 @@ namespace Systems
             // Rietmon: 1024 bytes should be enough fot 2 currencies
             buffer = new byte[1024];
 
-            var query = SystemAPI.QueryBuilder().WithAll<WalletComponentData>().Build();
+            if (!deserializeOnCreate)
+                return;
+            
+            var query = SystemAPI.QueryBuilder().WithAll<WalletComponentData, WalletModificationData>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             var length = entities.Length;
             if (length is 0 or > 1)
                 return;
-
+            
             var entity = entities[0];
+            
             var walletComponent = SystemAPI.GetComponentRW<WalletComponentData>(entity);
             ReadFromFileAsync(walletComponent).ContinueWith((task) =>
             {
@@ -46,6 +53,9 @@ namespace Systems
                 File.Delete(pathToFile);
                 fileStream = new FileStream(pathToFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             });
+
+            Debug.Log($"[{nameof(WalletTextSaveSystem)}] ({nameof(OnCreate)}) " +
+                      $"Deserialized from text!");
         }
 
         protected override void OnUpdate()
@@ -53,13 +63,18 @@ namespace Systems
             if (isBusy)
                 return;
 
-            var query = SystemAPI.QueryBuilder().WithAll<WalletComponentData>().Build();
+            var query = SystemAPI.QueryBuilder().WithAll<WalletComponentData, WalletModificationData>().Build();
             var entities = query.ToEntityArray(Allocator.Temp);
             var length = entities.Length;
             if (length is 0 or > 1)
                 return;
 
             var entity = entities[0];
+            var walletModificationBuffer = SystemAPI.GetBuffer<WalletModificationData>(entity);
+            var bufferLength = walletModificationBuffer.Length;
+            if (bufferLength == 0)
+                return;
+            
             var walletComponent = SystemAPI.GetComponentRW<WalletComponentData>(entity);
             WriteFileAsync(walletComponent).ContinueWith((task) =>
             {
@@ -121,6 +136,9 @@ namespace Systems
                 await fileStream.DisposeAsync();
                 fileStream = new FileStream(pathToFile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             }
+
+            Debug.Log($"[{nameof(WalletTextSaveSystem)}] ({nameof(WriteFileAsync)}) " +
+                      $"Saved to text file!");
             isBusy = false;
         }
     }

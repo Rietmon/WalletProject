@@ -5,37 +5,40 @@ using Unity.Entities;
 using UnityEngine;
 
 [DefaultExecutionOrder(-10000)]
-public unsafe class GameManager : MonoBehaviour
+public class GameManager : MonoBehaviour
 {
+    [SerializeField] private bool usePlayerPrefsForLoad;
+    [SerializeField] private bool useTextForLoad;
+    
+    private Entity walletEntity;
+    
     private void Awake()
     {
         var world = World.DefaultGameObjectInjectionWorld;
-        var entityManager = world.EntityManager;
-        var player = entityManager.CreateEntity();
-        entityManager.AddComponentData(player, new WalletComponentData());
+        
+        walletEntity = world.EntityManager.CreateEntity();
+        world.EntityManager.AddComponentData(walletEntity, new WalletComponentData());
+        world.EntityManager.AddBuffer<WalletModificationData>(walletEntity);
 
-        var system = world.CreateSystemManaged<WalletPlayerPrefsSaveSystem>();
-        world.GetExistingSystemManaged<SimulationSystemGroup>().AddSystemToUpdateList(system);
-
-        // var buffer = entityManager.AddBuffer<WalletModificationData>(player);
-        // buffer.Add(new WalletModificationData(0, long.MaxValue));
-        // buffer.Add(new WalletModificationData(1, 100));
-        // buffer.Add(new WalletModificationData(1, 100));
+        var playerPrefsSaveSystem = world.CreateSystemManaged<WalletPlayerPrefsSaveSystem>();
+        playerPrefsSaveSystem.deserializeOnCreate = usePlayerPrefsForLoad;
+        var textSaveSystem = world.CreateSystemManaged<WalletTextSaveSystem>();
+        textSaveSystem.deserializeOnCreate = useTextForLoad;
+        
+        var simulationSystemGroup = world.GetExistingSystemManaged<SimulationSystemGroup>();
+        simulationSystemGroup.AddSystemToUpdateList(playerPrefsSaveSystem);
+        simulationSystemGroup.AddSystemToUpdateList(textSaveSystem);
     }
     
-    private void Update()
+    public void AddCurrency(byte currency, long delta)
     {
-        var world = World.DefaultGameObjectInjectionWorld;
-        var entityManager = world.EntityManager;
-        var query = entityManager.CreateEntityQuery(typeof(WalletComponentData));
-        var entities = query.ToEntityArray(Allocator.Temp);
-        var length = entities.Length;
-        for (var i = 0; i < length; i++)
-        {
-            var entity = entities[i];
-            var walletComponent = entityManager.GetComponentData<WalletComponentData>(entity);
-            Debug.Log($"{walletComponent.wallet[0]} : {walletComponent.wallet[1]}");
-        }
-        entities.Dispose();
+        var buffer = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<WalletModificationData>(walletEntity);
+        buffer.Add(new WalletModificationData(currency, delta));
+    }
+    
+    public void SetCurrency(byte currency, long value)
+    {
+        var buffer = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<WalletModificationData>(walletEntity);
+        buffer.Add(new WalletModificationData(currency, 0, value));
     }
 }
